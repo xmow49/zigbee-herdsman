@@ -5797,6 +5797,103 @@ const Cluster: {
         },
         commandsResponse: {},
     },
+    manuSpecificGmmts: {
+        ID: 0xff42,
+        attributes: {
+            contractType: { ID: 0x0000, type: DataType.charStr },
+            startEJP: { ID: 0x0001, type: DataType.uint16 },
+            refreshRate: { ID: 0x0002, type: DataType.uint16 },
+            tomorowColor: { ID: 0x0003, type: DataType.charStr },
+
+            powerOverrun: { ID: 0x0004, type: DataType.uint16 },
+            powerOverrunA: { ID: 0x0005, type: DataType.uint16 },
+            powerOverrunB: { ID: 0x0006, type: DataType.uint16 },
+            powerOverrunC: { ID: 0x0007, type: DataType.uint16 },
+
+            potentialPresence: { ID: 0x0008, type: DataType.uint32 },
+
+            hcHours: { ID: 0x0009, type: DataType.charStr },
+            motdetat: { ID: 0x000a, type: DataType.charStr },
+
+            date: { ID: 0x000b, type: DataType.uint64 },
+
+            index1Dist: { ID: 0x000e, type: DataType.uint48 },
+            index2Dist: { ID: 0x000f, type: DataType.uint48 },
+            index3Dist: { ID: 0x0010, type: DataType.uint48 },
+            index4Dist: { ID: 0x0011, type: DataType.uint48 },
+
+            powerMaxYesterday: { ID: 0x0012, type: DataType.uint16 },
+            powerMaxYesterday1: { ID: 0x0013, type: DataType.uint16 },
+            powerMaxYesterday2: { ID: 0x0014, type: DataType.uint16 },
+            powerMaxYesterday3: { ID: 0x0015, type: DataType.uint16 },
+
+            powerInjected: { ID: 0x0016, type: DataType.uint32 },
+            powerMaxInjected: { ID: 0x0017, type: DataType.uint32 },
+            powerMaxInjectedYesterday: { ID: 0x0018, type: DataType.uint32 },
+
+            injectedLoadN: { ID: 0x0019, type: DataType.uint16 },
+            injectedLoadN_1: { ID: 0x001a, type: DataType.uint16 },
+
+            startEJP1: { ID: 0x001c, type: DataType.uint64 },
+            stopEJP1: { ID: 0x001d, type: DataType.uint64 },
+            startEJP2: { ID: 0x001e, type: DataType.uint64 },
+            stopEJP2: { ID: 0x001f, type: DataType.uint64 },
+            startEJP3: { ID: 0x0020, type: DataType.uint64 },
+            stopEJP3: { ID: 0x0021, type: DataType.uint64 },
+
+            shortMsg: { ID: 0x0022, type: DataType.charStr },
+            ultraShortMsg: { ID: 0x0023, type: DataType.charStr },
+
+            relays: { ID: 0x0024, type: DataType.charStr },
+
+            currentIndex: { ID: 0x0025, type: DataType.uint8 },
+
+            calendarSupplierDay: { ID: 0x0026, type: DataType.uint16 },
+            nextSupplierCalendarDay: { ID: 0x0027, type: DataType.uint16 },
+            calendarDay: { ID: 0x0028, type: DataType.charStr },
+            calendarDayPointe: { ID: 0x0029, type: DataType.charStr },
+
+            elecMode: { ID: 0x002a, type: DataType.uint8 },
+            maxContractPower: { ID: 0x002b, type: DataType.uint16 },
+            ticMode: { ID: 0x002c, type: DataType.uint8 },
+            uptime: { ID: 0x002d, type: DataType.uint48 },
+            ticVersion: { ID: 0x002e, type: DataType.charStr },
+
+            powerMaxTodayTime: { ID: 0x002f, type: DataType.uint64 },
+            powerMaxToday1Time: { ID: 0x0030, type: DataType.uint64 },
+            powerMaxToday2Time: { ID: 0x0031, type: DataType.uint64 },
+            powerMaxToday3Time: { ID: 0x0032, type: DataType.uint64 },
+
+            powerMaxYesterdayTime: { ID: 0x0033, type: DataType.uint64 },
+            powerMaxYesterday1Time: { ID: 0x0034, type: DataType.uint64 },
+            powerMaxYesterday2Time: { ID: 0x0035, type: DataType.uint64 },
+            powerMaxYesterday3Time: { ID: 0x0036, type: DataType.uint64 },
+
+            powerMaxInjectedTime: { ID: 0x0037, type: DataType.uint64 },
+            powerMaxInjectedYesterdayTime: { ID: 0x0038, type: DataType.uint64 },
+        },
+        commands: {      
+            refreshRate: {
+                ID: 0,
+                parameters: [
+                    { name: "refreshRate", type: DataType.uint16 },
+                ],
+            },
+            reboot: {
+                ID: 1,
+                parameters: [],
+            },
+    
+        },
+        commandsResponse: {
+            refreshRate: {
+                ID: 1,
+                parameters: [
+                    { name: "seq", type: DataType.uint16 },
+                ],
+            },
+        },
+    },
 };
 
 export default Cluster;
