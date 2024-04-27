@@ -1,5 +1,72 @@
 # Changelog
 
+## [0.43.1](https://github.com/Koenkk/zigbee-herdsman/compare/v0.43.0...v0.43.1) (2024-04-25)
+
+
+### Bug Fixes
+
+* Improve `tuyaAction` parsing ([#1030](https://github.com/Koenkk/zigbee-herdsman/issues/1030)) ([7867154](https://github.com/Koenkk/zigbee-herdsman/commit/786715424e15f78b5320c96558633429a9dcd8ba))
+* update msOccupancySensing definition ([#1031](https://github.com/Koenkk/zigbee-herdsman/issues/1031)) ([687527e](https://github.com/Koenkk/zigbee-herdsman/commit/687527ed37bc06ccccb30e866ee41c31b02e11e6))
+
+## [0.43.0](https://github.com/Koenkk/zigbee-herdsman/compare/v0.42.5...v0.43.0) (2024-04-23)
+
+
+### Features
+
+* Support custom clusters ([#1019](https://github.com/Koenkk/zigbee-herdsman/issues/1019)) ([d845f29](https://github.com/Koenkk/zigbee-herdsman/commit/d845f299ca44ba9ffccbb06f1e85081389a3281d))
+
+## [0.42.5](https://github.com/Koenkk/zigbee-herdsman/compare/v0.42.4...v0.42.5) (2024-04-21)
+
+
+### Bug Fixes
+
+* Ember: Register default bind group in coordinator mc table. ([#1026](https://github.com/Koenkk/zigbee-herdsman/issues/1026)) ([2094a08](https://github.com/Koenkk/zigbee-herdsman/commit/2094a086342f174ce3ef8ccd14154d1cfe2d44a5))
+
+## [0.42.4](https://github.com/Koenkk/zigbee-herdsman/compare/v0.42.3...v0.42.4) (2024-04-21)
+
+
+### Bug Fixes
+
+* Add `flowMeterConfig` to `manuSpecificSinope` ([#1025](https://github.com/Koenkk/zigbee-herdsman/issues/1025)) ([47cd267](https://github.com/Koenkk/zigbee-herdsman/commit/47cd2677abbedd887931a4decff4749046a5ac2c))
+* EZSP: fix frombuffer refactor GP ([#1023](https://github.com/Koenkk/zigbee-herdsman/issues/1023)) ([bd4f476](https://github.com/Koenkk/zigbee-herdsman/commit/bd4f476a5db756072955eebac2c83ceaec9d9743))
+* **ignore:** update dependencies ([#1022](https://github.com/Koenkk/zigbee-herdsman/issues/1022)) ([181703b](https://github.com/Koenkk/zigbee-herdsman/commit/181703b8e38779ae9e93defa570810b890dd916b))
+
+## [0.42.3](https://github.com/Koenkk/zigbee-herdsman/compare/v0.42.2...v0.42.3) (2024-04-18)
+
+
+### Bug Fixes
+
+* `Cannot read properties of null (reading 'asduPayload')` for Deconz adapter https://github.com/Koenkk/zigbee2mqtt/issues/22233 ([332c038](https://github.com/Koenkk/zigbee-herdsman/commit/332c0388ffc84cf645e6923debc21c54ce1d3424))
+
+## [0.42.2](https://github.com/Koenkk/zigbee-herdsman/compare/v0.42.1...v0.42.2) (2024-04-15)
+
+
+### Bug Fixes
+
+* **ignore:** update dependencies ([#1017](https://github.com/Koenkk/zigbee-herdsman/issues/1017)) ([caaf520](https://github.com/Koenkk/zigbee-herdsman/commit/caaf520e31b816155aa45180929c47bbc0bf94af))
+* Move `ZclFrame.fromBuffer()` out of adapter code ([#1011](https://github.com/Koenkk/zigbee-herdsman/issues/1011)) ([d4796de](https://github.com/Koenkk/zigbee-herdsman/commit/d4796de200c1541489cfb219f639b8f84c00d1fc))
+
+## [0.42.1](https://github.com/Koenkk/zigbee-herdsman/compare/v0.42.0...v0.42.1) (2024-04-08)
+
+
+### Bug Fixes
+
+* Ember: Log ASH counters same as NCP, increase host RX pool size. ([#1014](https://github.com/Koenkk/zigbee-herdsman/issues/1014)) ([ba6da27](https://github.com/Koenkk/zigbee-herdsman/commit/ba6da27d2ea2e0f6cc6be95bb7fcf525b8671a61))
+* EZSP: change logging levels ([#1013](https://github.com/Koenkk/zigbee-herdsman/issues/1013)) ([66a4b33](https://github.com/Koenkk/zigbee-herdsman/commit/66a4b3393884f948233eebe5b13d579e4233cbd5))
+
+## [0.42.0](https://github.com/Koenkk/zigbee-herdsman/compare/v0.41.2...v0.42.0) (2024-04-07)
+
+
+### Features
+
+* Add `manuSpecificBosch11` cluster ([#1008](https://github.com/Koenkk/zigbee-herdsman/issues/1008)) ([328d0fd](https://github.com/Koenkk/zigbee-herdsman/commit/328d0fdab20ecd1284b7b77e1a5fa7b84ac16478))
+
+
+### Bug Fixes
+
+* Ember: code optimizations ([#1010](https://github.com/Koenkk/zigbee-herdsman/issues/1010)) ([cd6906c](https://github.com/Koenkk/zigbee-herdsman/commit/cd6906cfc37d74a00e7f7bd7c1745f566441dda8))
+* **ignore:** update dependencies ([#1012](https://github.com/Koenkk/zigbee-herdsman/issues/1012)) ([5204162](https://github.com/Koenkk/zigbee-herdsman/commit/5204162c29a8e614637d82121f4116e9b7213ee2))
+
 ## [0.41.2](https://github.com/Koenkk/zigbee-herdsman/compare/v0.41.1...v0.41.2) (2024-04-04)
 
 

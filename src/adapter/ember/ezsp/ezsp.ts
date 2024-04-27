@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import EventEmitter from "events";
 import {SerialPortOptions} from "../../tstype";
-import Cluster from "../../../zcl/definition/cluster";
+import Clusters from "../../../zcl/definition/cluster";
 import {byteToBits, getMacCapFlags, highByte, highLowToInt, lowByte, lowHighBits} from "../utils/math";
 import {
     EmberOutgoingMessageType,
@@ -319,7 +319,11 @@ export class Ezsp extends EventEmitter {
     }
 
     private initVariables(): void {
-        clearInterval(this.tickHandle);
+        if (this.waitingForResponse) {
+            clearTimeout(this.responseWaiter.timer);
+        }
+
+        clearTimeout(this.tickHandle);
 
         this.frameContents.fill(0);
         this.frameLength = 0;
@@ -353,7 +357,7 @@ export class Ezsp extends EventEmitter {
 
             if (status === EzspStatus.SUCCESS) {
                 logger.info(`======== EZSP started ========`, NS);
-                this.registerHandlers();
+                this.tick();
                 return status;
             }
         }
@@ -367,12 +371,6 @@ export class Ezsp extends EventEmitter {
      */
     public async stop(): Promise<void> {
         await this.ash.stop();
-
-        if (this.waitingForResponse) {
-            clearTimeout(this.responseWaiter.timer);
-        }
-
-        clearInterval(this.tickHandle);
 
         this.initVariables();
         logger.info(`======== EZSP stopped ========`, NS);
@@ -439,27 +437,19 @@ export class Ezsp extends EventEmitter {
         }
     }
 
-    private registerHandlers(): void {
-        this.tickHandle = setInterval(this.tick.bind(this), this.tickInterval);
-    }
-
     /**
      * The Host application must call this function periodically to allow the EZSP layer to handle asynchronous events.
      */
     private tick(): void {
-        if (this.sendingCommand) {
-            // don't process any callbacks while expecting a command's response
-            return;
-        }
-
+        // don't process any callbacks while sending a command and waiting for its response
         // nothing in the rx queue, nothing to receive
-        if (this.ash.rxQueue.empty) {
-            return;
+        if (!this.sendingCommand && !this.ash.rxQueue.empty) {
+            if (this.responseReceived() === EzspStatus.SUCCESS) {
+                this.callbackDispatch();
+            }
         }
 
-        if (this.responseReceived() === EzspStatus.SUCCESS) {
-            this.callbackDispatch();
-        }
+        this.tickHandle = setTimeout(this.tick.bind(this), this.tickInterval);
     }
 
     private nextFrameSequence(): number {
@@ -2054,6 +2044,7 @@ export class Ezsp extends EventEmitter {
      */
     ezspCounterRolloverHandler(type: EmberCounterType): void {
         logger.debug(`ezspCounterRolloverHandler(): callback called with: [type=${EmberCounterType[type]}]`, NS);
+        logger.info(`NCP Counter ${EmberCounterType[type]} rolled over.`, NS);
     }
 
     /**
@@ -5242,7 +5233,7 @@ export class Ezsp extends EventEmitter {
         const profileId = msgBuffalo.readUInt16();
         const payload = msgBuffalo.readRest();
 
-        if (profileId === TOUCHLINK_PROFILE_ID && clusterId === Cluster.touchlink.ID) {
+        if (profileId === TOUCHLINK_PROFILE_ID && clusterId === Clusters.touchlink.ID) {
             this.emit(EzspEvents.TOUCHLINK_MESSAGE, sourcePanId, sourceAddress, groupId, lastHopLqi, payload);
         }
     }
@@ -7596,7 +7587,7 @@ export class Ezsp extends EventEmitter {
             return;
         }
 
-        let commandIdentifier = Cluster.greenPower.commands.notification.ID;
+        let commandIdentifier = Clusters.greenPower.commands.notification.ID;
 
         if (gpdCommandId === 0xE0) {
             if (!gpdCommandPayload.length) {
@@ -7605,7 +7596,7 @@ export class Ezsp extends EventEmitter {
                 return;
             }
 
-            commandIdentifier = Cluster.greenPower.commands.commissioningNotification.ID;
+            commandIdentifier = Clusters.greenPower.commands.commissioningNotification.ID;
         }
 
         this.emit(

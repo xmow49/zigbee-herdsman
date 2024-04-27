@@ -400,6 +400,7 @@ class BuffaloZcl extends Buffalo {
             const cluster = Utils.getCluster(
                 frame.clusterID,
                 frame.manufacturerCode,
+                {},
             );
             
             while (this.position - start < options.payload.payloadSize) {
@@ -425,7 +426,7 @@ class BuffaloZcl extends Buffalo {
         }
     }
 
-    private writeGdpFrame(value: GdpCommissioningReply | GdpChannelConfiguration | GdpCustomReply): void{
+    private writeGdpFrame(value: GdpCommissioningReply | GdpChannelConfiguration | GdpCustomReply): void {
         if (value.commandID == 0xF0) { // Commissioning Reply
             const v = <GdpCommissioningReply> value;
 

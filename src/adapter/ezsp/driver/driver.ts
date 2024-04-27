@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import * as TsType from './../../tstype';
 import {Ezsp, EZSPFrameData, EZSPZDOResponseFrameData} from './ezsp';
-import {EmberStatus, EmberNodeType, uint16_t, uint8_t, uint32_t, EmberZDOCmd, EmberApsOption, EmberKeyData,
+import {EmberStatus, EmberNodeType, uint16_t, uint8_t, EmberZDOCmd, EmberApsOption, EmberKeyData,
     EmberJoinDecision} from './types';
 import {EventEmitter} from "events";
 import {EmberApsFrame, EmberNetworkParameters, EmberInitialSecurityState, EmberKeyStruct,
@@ -28,8 +28,9 @@ import equals from 'fast-deep-equal/es6';
 import {ParamsDesc} from './commands';
 import {EZSPAdapterBackup} from '../adapter/backup';
 import {logger} from '../../../utils/logger';
+import Clusters from '../../../zcl/definition/cluster';
 
-const NS = 'zh:ezsp:driver';
+const NS = 'zh:ezsp:driv';
 
 interface AddEndpointParameters {
     endpoint?: number,
@@ -110,42 +111,42 @@ export class Driver extends EventEmitter {
      * @returns 
      */
     public async reset(): Promise<void> {
-        logger.info(`Reset connection.`, NS);
+        logger.debug(`Reset connection.`, NS);
 
         try {
             // don't emit 'close' on stop since we don't want this to bubble back up as 'disconnected' to the controller.
             await this.stop(false);
         } catch (err) {
-            logger.error(`Stop error ${err.stack}`, NS);
+            logger.debug(`Stop error ${err.stack}`, NS);
         }
         try {
             await Wait(1000);
-            logger.info(`Startup again.`, NS);
+            logger.debug(`Startup again.`, NS);
             await this.startup();
         } catch (err) {
-            logger.error(`Reset error ${err.stack}`, NS);
+            logger.debug(`Reset error ${err.stack}`, NS);
 
             try {
                 // here we let emit
                 await this.stop();
             } catch (stopErr) {
-                logger.error(`Failed to stop after failed reset ${stopErr.stack}`, NS);
+                logger.debug(`Failed to stop after failed reset ${stopErr.stack}`, NS);
             }
         }
     }
 
     private async onEzspReset(): Promise<void> {
-        logger.info('onEzspReset()', NS);
+        logger.debug('onEzspReset()', NS);
         await this.reset();
     }
 
     private onEzspClose(): void {
-        logger.info('onEzspClose()', NS);
+        logger.debug('onEzspClose()', NS);
         this.emit('close');
     }
 
     public async stop(emitClose: boolean = true): Promise<void> {
-        logger.info('Stopping driver', NS);
+        logger.debug('Stopping driver', NS);
 
         if (this.ezsp) {
             return this.ezsp.close(emitClose);
@@ -162,7 +163,7 @@ export class Driver extends EventEmitter {
         try {
             await this.ezsp.connect(this.serialOpt);
         } catch (error) {
-            logger.error(`EZSP could not connect: ${error.cause ?? error}`, NS);
+            logger.debug(`EZSP could not connect: ${error.cause ?? error}`, NS);
             
             throw error;
         }
@@ -204,7 +205,7 @@ export class Driver extends EventEmitter {
         [special, verInfo] = uint8_t.deserialize(uint8_t, verInfo);
         /* eslint-enable prefer-const */
         const vers = `${major}.${minor}.${patch}.${special} build ${build}`;
-        logger.info(`EmberZNet version: ${vers}`, NS);
+        logger.debug(`EmberZNet version: ${vers}`, NS);
         this.version = {
             product: this.ezsp.ezspV,
             majorrel: `${major}`,
@@ -219,7 +220,7 @@ export class Driver extends EventEmitter {
 
             const res = await this.ezsp.execCommand('networkState');
 
-            logger.info(`Network state ${res.status}`, NS);
+            logger.debug(`Network state ${res.status}`, NS);
 
             if (res.status == EmberNetworkStatus.JOINED_NETWORK) {
                 logger.info(`Leaving current network and forming new network`, NS);
@@ -245,7 +246,7 @@ export class Driver extends EventEmitter {
         }
 
         const state = (await this.ezsp.execCommand('networkState')).status;
-        logger.info(`Network state ${state}`, NS);
+        logger.debug(`Network state ${state}`, NS);
 
         const netParams = await this.ezsp.execCommand('getNetworkParameters');
 
@@ -254,19 +255,19 @@ export class Driver extends EventEmitter {
         }
 
         this.networkParams = netParams.parameters;
-        logger.info(`Node type: ${netParams.nodeType}, Network parameters: ${this.networkParams}`, NS);
+        logger.debug(`Node type: ${netParams.nodeType}, Network parameters: ${this.networkParams}`, NS);
 
         const nwk = (await this.ezsp.execCommand('getNodeId')).nodeId;
         const ieee = (await this.ezsp.execCommand('getEui64')).eui64;
         this.ieee = new EmberEUI64(ieee);
-        logger.info('Network ready', NS);
+        logger.debug('Network ready', NS);
         this.ezsp.on('frame', this.handleFrame.bind(this));
         this.handleNodeJoined(nwk, this.ieee);
-        logger.info(`EZSP nwk=${nwk}, IEEE=0x${this.ieee}`, NS);
+        logger.debug(`EZSP nwk=${nwk}, IEEE=0x${this.ieee}`, NS);
         const linkResult = await this.getKey(EmberKeyType.TRUST_CENTER_LINK_KEY);
-        logger.info(`TRUST_CENTER_LINK_KEY: ${JSON.stringify(linkResult)}`, NS);
+        logger.debug(`TRUST_CENTER_LINK_KEY: ${JSON.stringify(linkResult)}`, NS);
         const netResult = await this.getKey(EmberKeyType.CURRENT_NETWORK_KEY);
-        logger.info(`CURRENT_NETWORK_KEY: ${JSON.stringify(netResult)}`, NS);
+        logger.debug(`CURRENT_NETWORK_KEY: ${JSON.stringify(netResult)}`, NS);
 
         await Wait(1000);
         await this.ezsp.execCommand('setManufacturerCode', {code: DEFAULT_MFG_ID});
@@ -284,7 +285,7 @@ export class Driver extends EventEmitter {
         valid = valid && (await this.ezsp.networkInit());
         const netParams = await this.ezsp.execCommand('getNetworkParameters');
         const networkParams = netParams.parameters;
-        logger.info(`Current Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`, NS);
+        logger.debug(`Current Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`, NS);
         valid = valid && (netParams.status == EmberStatus.SUCCESS);
         valid = valid && (netParams.nodeType == EmberNodeType.COORDINATOR);
         valid = valid && (options.panID == networkParams.panId);
@@ -401,7 +402,7 @@ export class Driver extends EventEmitter {
         }
         case (frameName === 'macFilterMatchMessageHandler'): {
             const [rawFrame, data] = EmberIeeeRawFrame.deserialize(EmberIeeeRawFrame, frame.message);
-            logger.info(`macFilterMatchMessageHandler frame message: ${rawFrame}`, NS);
+            logger.debug(`macFilterMatchMessageHandler frame message: ${rawFrame}`, NS);
             this.emit('incomingMessage', {
                 messageType: null, 
                 apsFrame: rawFrame, 
@@ -416,7 +417,7 @@ export class Driver extends EventEmitter {
             break;
         }
         case (frameName === 'stackStatusHandler'): {
-            logger.info(`stackStatusHandler: ${EmberStatus.valueToName(EmberStatus, frame.status)}`, NS);
+            logger.debug(`stackStatusHandler: ${EmberStatus.valueToName(EmberStatus, frame.status)}`, NS);
             break;
         }
         // case (frameName === 'childJoinHandler'): {
@@ -428,7 +429,43 @@ export class Driver extends EventEmitter {
         //     break;
         // }
         case (frameName == 'gpepIncomingMessageHandler'): {
-            this.handleGPMessage(frame);
+            let commandIdentifier = Clusters.greenPower.commands.notification.ID;
+
+            if (frame.gpdCommandId === 0xE0) {
+                if (!frame.gpdCommandPayload.length) {
+                    // XXX: seem to be receiving duplicate commissioningNotification from some devices, second one with empty payload?
+                    //      this will mess with the process no doubt, so dropping them
+                    return;
+                }
+
+                commandIdentifier = Clusters.greenPower.commands.commissioningNotification.ID;
+            }
+
+            const gpdHeader = Buffer.alloc(15);
+            gpdHeader.writeUInt8(0b00000001, 0);// frameControl: FrameType.SPECIFIC + Direction.CLIENT_TO_SERVER + disableDefaultResponse=false
+            gpdHeader.writeUInt8(frame.sequenceNumber, 1);// transactionSequenceNumber
+            gpdHeader.writeUInt8(commandIdentifier, 2);// commandIdentifier
+            gpdHeader.writeUInt16LE(0, 3);// options XXX: bypassed, same as deconz https://github.com/Koenkk/zigbee-herdsman/pull/536
+            gpdHeader.writeUInt32LE(frame.srcId, 5);// srcID
+            // omitted: gpdIEEEAddr ieeeAddr
+            // omitted: gpdEndpoint uint8
+            gpdHeader.writeUInt32LE(frame.gpdSecurityFrameCounter, 9);// frameCounter
+            gpdHeader.writeUInt8(frame.gpdCommandId, 13);// commandID
+            gpdHeader.writeUInt8(frame.gpdCommandPayload.length, 14);// payloadSize
+
+            const gpdMessage = {
+                messageType: frame.gpdCommandId,
+                apsFrame: {
+                    profileId: 0xA1E0,
+                    sourceEndpoint: 242,
+                    clusterId: 0x0021,
+                    sequence: frame.sequenceNumber,
+                }, 
+                lqi: frame.gpdLink,
+                message: Buffer.concat([gpdHeader, frame.gpdCommandPayload]),
+                sender: frame.addr,
+            };
+            this.emit('incomingMessage', gpdMessage);
             break;
         }
         default:
@@ -441,14 +478,14 @@ export class Driver extends EventEmitter {
             // <=== Application frame 155 (zigbeeKeyEstablishmentHandler) received: 2ebd08feff9ffd9006 +2ms
             // <=== Application frame 155 (zigbeeKeyEstablishmentHandler)   parsed: 144,253,159,255,254,8,189,46,6 +2ms
             // Unhandled frame zigbeeKeyEstablishmentHandler
-            logger.info(`Unhandled frame ${frameName}`, NS);
+            logger.debug(`Unhandled frame ${frameName}`, NS);
         }
     }
 
     private handleRouteRecord(nwk: number, ieee: EmberEUI64 | number[], lqi: number, rssi: number,
         relays: number): void {
         // todo
-        logger.info(
+        logger.debug(
             `handleRouteRecord: nwk=${nwk}, ieee=${ieee.toString()}, lqi=${lqi}, rssi=${rssi}, relays=${relays}`,
             NS,
         );
@@ -462,7 +499,7 @@ export class Driver extends EventEmitter {
 
     private handleRouteError(status: EmberStatus, nwk: number): void {
         // todo
-        logger.info(`handleRouteError: nwk=${nwk}, status=${status}`, NS);
+        logger.debug(`handleRouteError: nwk=${nwk}, status=${status}`, NS);
         //this.waitress.reject({address: nwk, payload: null, frame: null}, 'Route error');
         // const ieee = await this.networkIdToEUI64(nwk);
         // this.eui64ToRelays.set(ieee.toString(), null);
@@ -479,7 +516,7 @@ export class Driver extends EventEmitter {
         //     "target":50564
         // }
         // https://docs.silabs.com/d/zigbee-stack-api/7.4.0/message#ember-incoming-network-status-handler
-        logger.info(`handleNetworkStatus: nwk=${nwk}, errorCode=${errorCode}`, NS);
+        logger.debug(`handleNetworkStatus: nwk=${nwk}, errorCode=${errorCode}`, NS);
     }
 
     private handleNodeLeft(nwk: number, ieee: EmberEUI64 | number[]): void {
@@ -506,7 +543,7 @@ export class Driver extends EventEmitter {
         for(const rec of IEEE_PREFIX_MFG_ID) {
             if ((Buffer.from((ieee as EmberEUI64).value)).indexOf(Buffer.from(rec.prefix)) == 0) {
                 // set ManufacturerCode
-                logger.info(`handleNodeJoined: change ManufacturerCode for ieee ${ieee} to ${rec.mfgId}`, NS);
+                logger.debug(`handleNodeJoined: change ManufacturerCode for ieee ${ieee} to ${rec.mfgId}`, NS);
                 // eslint-disable-next-line @typescript-eslint/no-floating-promises
                 this.resetMfgId(rec.mfgId);
                 break;
@@ -572,7 +609,7 @@ export class Driver extends EventEmitter {
                 if ([EmberStatus.MAX_MESSAGE_LIMIT_REACHED, EmberStatus.NO_BUFFERS, EmberStatus.NETWORK_BUSY]
                     .includes(sendResult.status)) {
                     // need to repeat after pause
-                    logger.info(`Request send status ${sendResult.status}. Attempt to repeat the request`, NS);
+                    logger.error(`Request send status ${sendResult.status}. Attempt to repeat the request`, NS);
 
                     await Wait(delay);
                 } else {
@@ -580,7 +617,7 @@ export class Driver extends EventEmitter {
                     break;
                 }
             } catch (e) {
-                logger.error(`Request error ${e}: ${e.stack}`, NS);
+                logger.debug(`Request error ${e}: ${e.stack}`, NS);
                 break;
             }
         }
@@ -606,7 +643,7 @@ export class Driver extends EventEmitter {
             await this.ezsp.execCommand('sendRawMessage', {message: msgData});
             return true;
         } catch (e) {
-            logger.error(`Request error ${e}: ${e.stack}`, NS);
+            logger.debug(`Request error ${e}: ${e.stack}`, NS);
             return false;
         }
     }
@@ -618,7 +655,7 @@ export class Driver extends EventEmitter {
             await this.ezsp.execCommand('sendRawMessage', {message: msgData});
             return true;
         } catch (e) {
-            logger.error(`Request error ${e}: ${e.stack}`, NS);
+            logger.debug(`Request error ${e}: ${e.stack}`, NS);
             return false;
         }
     }
@@ -674,7 +711,7 @@ export class Driver extends EventEmitter {
         const requestName = EmberZDOCmd.valueName(EmberZDOCmd, requestCmd);
         const responseName = EmberZDOCmd.valueName(EmberZDOCmd, responseCmd);
 
-        logger.info(`ZDO ${requestName} params: ${JSON.stringify(params)}`, NS);
+        logger.debug(`ZDO ${requestName} params: ${JSON.stringify(params)}`, NS);
 
         const frame = this.makeApsFrame(requestCmd as number, false);
         const payload = this.makeZDOframe(requestCmd as number, {transId: frame.sequence, ...params});
@@ -689,16 +726,16 @@ export class Driver extends EventEmitter {
 
             const response = await waiter.start().promise;
 
-            logger.info(`${responseName}  frame: ${JSON.stringify(response.payload)}`, NS);
+            logger.debug(`${responseName}  frame: ${JSON.stringify(response.payload)}`, NS);
 
             const result = new EZSPZDOResponseFrameData(responseCmd as number, response.payload);
 
-            logger.info(`${responseName} parsed: ${JSON.stringify(result)}`, NS);
+            logger.debug(`${responseName} parsed: ${JSON.stringify(result)}`, NS);
 
             return result;
         } catch (e) {
             this.waitress.remove(waiter.ID);
-            logger.error(`zdoRequest error: ${e} ${e.stack}`, NS);
+            logger.debug(`zdoRequest error: ${e} ${e.stack}`, NS);
 
             throw e;
         }
@@ -768,7 +805,7 @@ export class Driver extends EventEmitter {
             inputClusterList: inputClusters,
             outputClusterList: outputClusters,
         });
-        logger.info(`Ezsp adding endpoint: ${JSON.stringify(res)}`, NS);
+        logger.debug(`Ezsp adding endpoint: ${JSON.stringify(res)}`, NS);
     }
 
     public waitFor(address: number, clusterId: number, sequence: number, timeout = 10000)
@@ -821,63 +858,6 @@ export class Driver extends EventEmitter {
         }
     }
 
-    private handleGPMessage(frame: EZSPFrameData): void {
-        // Commissioning
-        if (frame.gpdCommandId == 0xE0) {
-            let data = frame.payload.subarray(5);
-            /* eslint-disable */
-            let st, deviceId, options, extOptions, key, mic, counter;
-            [st, data] = uint8_t.deserialize(uint8_t, data);
-            [deviceId, data] = uint8_t.deserialize(uint8_t, data);
-            [options, data] = uint8_t.deserialize(uint8_t, data);
-            [extOptions, data] = uint8_t.deserialize(uint8_t, data);
-            [key, data] = EmberKeyData.deserialize(EmberKeyData, data);
-            [mic, data] = uint32_t.deserialize(uint32_t, data);
-            [counter, data] = uint32_t.deserialize(uint32_t, data);
-            /* eslint-enable */
-            const gpdMessage = {
-                messageType: frame.gpdCommandId,
-                apsFrame: {
-                    profileId: 0xA1E0,
-                    sourceEndpoint: 242,
-                    clusterId: 0x0021,
-                    sequence: frame.sequenceNumber,
-                }, 
-                lqi: frame.gpdLink,
-                message: {
-                    commandID: frame.gpdCommandId,
-                    commandFrame: {
-                        options: options,
-                        securityKey: Buffer.from(key.contents),
-                        deviceID: deviceId,
-                        outgoingCounter: counter,
-                    },
-                    srcID: frame.srcId,
-                },
-                sender: frame.addr,
-            };
-            this.emit('incomingMessage', gpdMessage);
-        } else {
-            const gpdMessage = {
-                messageType: frame.gpdCommandId,
-                apsFrame: {
-                    profileId: 0xA1E0,
-                    sourceEndpoint: 242,
-                    clusterId: 0x0021,
-                    sequence: frame.sequenceNumber,
-                }, 
-                lqi: frame.gpdLink,
-                message: {
-                    commandID: frame.gpdCommandId,
-                    frameCounter: frame.sequenceNumber,
-                    srcID: frame.srcId,
-                },
-                sender: frame.addr,
-            };
-            this.emit('incomingMessage', gpdMessage);
-        }
-    }
-
     public async getKey(keyType: EmberKeyType): Promise<EZSPFrameData> {
         if (this.ezsp.ezspV < 13) {
             return this.ezsp.execCommand('getKey', {keyType});
@@ -927,8 +907,8 @@ export class Driver extends EventEmitter {
         //valid = valid && (await this.ezsp.networkInit());
         const netParams = await this.ezsp.execCommand('getNetworkParameters');
         const networkParams = netParams.parameters;
-        logger.info(`Current Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`, NS);
-        logger.info(`Backuped network parameters: ${backup.networkOptions}`, NS);
+        logger.debug(`Current Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`, NS);
+        logger.debug(`Backuped network parameters: ${backup.networkOptions}`, NS);
         const networkKey = await this.getKey(EmberKeyType.CURRENT_NETWORK_KEY);
         let netKey: Buffer = null;
         if (this.ezsp.ezspV < 13) {

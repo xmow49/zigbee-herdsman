@@ -1,37 +1,10 @@
 /* eslint max-len: 0 */
 import DataType from './dataType';
-import {ParameterDefinition} from './tstype';
+import {ClusterDefinition, ClusterName} from './tstype';
 import BuffaloZclDataType from './buffaloZclDataType';
 import ManufacturerCode from './manufacturerCode';
 
-interface AttributeDefinition {
-    ID: number;
-    type: DataType;
-    manufacturerCode?: number;
-}
-
-interface ClusterDefinition {
-    ID: number;
-    manufacturerCode?: number;
-    attributes: {[s: string]: AttributeDefinition};
-    commands: {
-        [s: string]: CommandDefinition;
-    };
-    commandsResponse: {
-        [s: string]: CommandDefinition;
-    };
-}
-
-interface CommandDefinition {
-    ID: number;
-    parameters: ParameterDefinition[];
-    response?: number;
-}
-
-const Cluster: {
-    [s: string]: ClusterDefinition;
-}
-= {
+const Clusters: Readonly<Record<ClusterName, Readonly<ClusterDefinition>>> = {
     genBasic: {
         ID: 0,
         attributes: {
@@ -508,6 +481,7 @@ const Cluster: {
                 ID: 0xFD,
                 parameters: [
                     {name: 'value', type: DataType.uint8},
+                    {name: 'data', type: BuffaloZclDataType.BUFFER},
                 ],
             },
             tuyaAction2: {
@@ -2625,14 +2599,18 @@ const Cluster: {
     msOccupancySensing: {
         ID: 1030,
         attributes: {
-            occupancy: {ID: 0, type: DataType.bitmap8},
-            occupancySensorType: {ID: 1, type: DataType.enum8},
-            pirOToUDelay: {ID: 16, type: DataType.uint16},
-            pirUToODelay: {ID: 17, type: DataType.uint16},
-            pirUToOThreshold: {ID: 18, type: DataType.uint8},
-            ultrasonicOToUDelay: {ID: 32, type: DataType.uint16},
-            ultrasonicUToODelay: {ID: 33, type: DataType.uint16},
-            ultrasonicUToOThreshold: {ID: 34, type: DataType.uint8},
+            occupancy: {ID: 0x0000, type: DataType.bitmap8},
+            occupancySensorType: {ID: 0x0001, type: DataType.enum8},
+            occupancySensorTypeBitmap: {ID: 0x0002, type: DataType.bitmap8},
+            pirOToUDelay: {ID: 0x0010, type: DataType.uint16},
+            pirUToODelay: {ID: 0x0011, type: DataType.uint16},
+            pirUToOThreshold: {ID: 0x0012, type: DataType.uint8},
+            ultrasonicOToUDelay: {ID: 0x0020, type: DataType.uint16},
+            ultrasonicUToODelay: {ID: 0x0021, type: DataType.uint16},
+            ultrasonicUToOThreshold: {ID: 0x0022, type: DataType.uint8},
+            contactOToUDelay: {ID: 0x0030, type: DataType.uint16},
+            contactUToODelay: {ID: 0x0031, type: DataType.uint16},
+            contactUToOThreshold: {ID: 0x0032, type: DataType.uint8},
             elkoOccupancyDfltOperationMode: {ID: 0xE000, type: DataType.enum8, manufacturerCode: ManufacturerCode.ADEO},
             elkoOccupancyOperationMode: {ID: 0xE001, type: DataType.enum8, manufacturerCode: ManufacturerCode.ADEO},
             elkoForceOffTimeout: {ID: 0xE002, type: DataType.uint16, manufacturerCode: ManufacturerCode.ADEO},
@@ -4311,6 +4289,7 @@ const Cluster: {
             // attribute ID: 300's readable, returns a buffer
             reportLocalTemperature: {ID: 301, type: DataType.int16},
             // attribute ID: 512's readable
+            flowMeterConfig: {ID: 576, type: DataType.array},
             coldLoadPickupStatus: {ID: 643, type: DataType.uint8},
         },
         commands: {
@@ -5377,7 +5356,7 @@ const Cluster: {
         ID: 0xe000,
         manufacturerCode: ManufacturerCode.ROBERT_BOSCH_GMBH,
         attributes: {
-            sensitivity: {ID: 0x4003, type: 0x21},
+            sensitivity: {ID: 0x4003, type: DataType.uint16},
         },
         commands: {
             initiateTestMode: {
@@ -5391,19 +5370,19 @@ const Cluster: {
         ID: 0xe002,
         manufacturerCode: ManufacturerCode.ROBERT_BOSCH_GMBH,
         attributes: {
-            humidity       : {ID: 0x4000, type: 0x21},
-            unknown1       : {ID: 0x4001, type: 0x21},
-            unknown2       : {ID: 0x4002, type: 0x21},
-            airpurity      : {ID: 0x4003, type: 0x21},
-            temperature    : {ID: 0x4004, type: 0x29},
-            illuminance_lux: {ID: 0x4005, type: 0x21},
-            battery        : {ID: 0x4006, type: 0x21},
-            unknown3       : {ID: 0x4007, type: 0x21},
-            unknown4       : {ID: 0x4008, type: 0x21},
-            unknown5       : {ID: 0x4009, type: 0x21},
-            unknown6       : {ID: 0x400a, type: 0x21},
-            unknown7       : {ID: 0x400b, type: 0x21},
-            unknown8       : {ID: 0x400c, type: 0x21},
+            humidity       : {ID: 0x4000, type: DataType.uint16},
+            unknown1       : {ID: 0x4001, type: DataType.uint16},
+            unknown2       : {ID: 0x4002, type: DataType.uint16},
+            airpurity      : {ID: 0x4003, type: DataType.uint16},
+            temperature    : {ID: 0x4004, type: DataType.int16},
+            illuminance_lux: {ID: 0x4005, type: DataType.uint16},
+            battery        : {ID: 0x4006, type: DataType.uint16},
+            unknown3       : {ID: 0x4007, type: DataType.uint16},
+            unknown4       : {ID: 0x4008, type: DataType.uint16},
+            pressure       : {ID: 0x4009, type: DataType.uint16}, // Not yet confirmed
+            unknown6       : {ID: 0x400a, type: DataType.uint16},
+            unknown7       : {ID: 0x400b, type: DataType.uint16},
+            unknown8       : {ID: 0x400c, type: DataType.uint16},
         },
         commands: {},
         commandsResponse: {},
@@ -5422,8 +5401,8 @@ const Cluster: {
         ID: 0xe006,
         manufacturerCode: ManufacturerCode.ROBERT_BOSCH_GMBH,
         attributes: {
-            unknown1:  {ID: 0x5003, type: 0x28}, // perhaps signal strength? -7?
-            unknown2:  {ID: 0x5004, type: 0x20}, // ????
+            unknown1:  {ID: 0x5003, type: DataType.int8}, // perhaps signal strength? -7?
+            unknown2:  {ID: 0x5004, type: DataType.uint8}, // ????
             heartbeat: {ID: 0x5005, type: DataType.bitmap8}, // 0,1 on/off
         },
         commands: {
@@ -5480,6 +5459,15 @@ const Cluster: {
             calibrationClosingTime: {ID: 0x0003, type: DataType.uint32},
             childLock: {ID: 0x0008, type: DataType.boolean},
             motorState: {ID: 0x0013, type: DataType.enum8},
+        },
+        commands: {},
+        commandsResponse: {},
+    },
+    manuSpecificBosch11: {
+        ID: 0xfcac,
+        manufacturerCode: ManufacturerCode.ROBERT_BOSCH_GMBH,
+        attributes: {
+            alarmOnMotion: {ID: 0x0003, type: DataType.boolean},
         },
         commands: {},
         commandsResponse: {},
@@ -5896,4 +5884,4 @@ const Cluster: {
     },
 };
 
-export default Cluster;
+export default Clusters;

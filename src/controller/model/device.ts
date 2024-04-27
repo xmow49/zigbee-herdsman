@@ -8,6 +8,9 @@ import * as Zcl from '../../zcl';
 import assert from 'assert';
 import {ZclFrameConverter} from '../helpers';
 import {logger} from '../../utils/logger';
+import {ClusterDefinition, CustomClusters} from '../../zcl/definition/tstype';
+import {Clusters} from '../../zcl';
+import {isClusterName} from '../../zcl/utils';
 
 /**
  * @ignore
@@ -55,6 +58,7 @@ class Device extends Entity {
     private _lastDefaultResponseSequenceNumber: number;
     private _checkinInterval: number;
     private _pendingRequestTimeout: number;
+    private _customClusters: CustomClusters = {};
 
     // Getters/setters
     get ieeeAddr(): string {return this._ieeeAddr;}
@@ -107,6 +111,7 @@ class Device extends Entity {
     };
     get pendingRequestTimeout(): number {return this._pendingRequestTimeout;}
     set pendingRequestTimeout(pendingRequestTimeout: number) {this._pendingRequestTimeout = pendingRequestTimeout;}
+    get customClusters(): CustomClusters {return this._customClusters;}
 
     public meta: KeyValue;
 
@@ -210,25 +215,23 @@ class Device extends Entity {
         return this.endpoints.find(e => e.hasPendingRequests()) !== undefined;
     }
 
-    public async onZclData(dataPayload: AdapterEvents.ZclDataPayload, endpoint: Endpoint): Promise<void> {
-        const frame = dataPayload.frame;
-
+    public async onZclData(dataPayload: AdapterEvents.ZclPayload, frame: Zcl.ZclFrame, endpoint: Endpoint): Promise<void> {
         // Update reportable properties
         if (frame.isCluster('genBasic') && (frame.isCommand('readRsp') || frame.isCommand('report'))) {
-            for (const [key, val] of Object.entries(ZclFrameConverter.attributeKeyValue(frame, this.manufacturerID))) {
+            for (const [key, val] of Object.entries(ZclFrameConverter.attributeKeyValue(frame, this.manufacturerID, this.customClusters))) {
                 Device.ReportablePropertiesMapping[key]?.set(val, this);
             }
         }
 
         // Respond to enroll requests
-        if (frame.isSpecific() && frame.isCluster('ssIasZone') && frame.isCommand('enrollReq')) {
+        if (frame.header.isSpecific && frame.isCluster('ssIasZone') && frame.isCommand('enrollReq')) {
             logger.debug(`IAS - '${this.ieeeAddr}' responding to enroll response`, NS);
             const payload = {enrollrspcode: 0, zoneid: 23};
             await endpoint.command('ssIasZone', 'enrollRsp', payload, {disableDefaultResponse: true});
         }
 
         // Reponse to read requests
-        if (frame.isGlobal() && frame.isCommand('read') && !(this._customReadResponse?.(frame, endpoint))) {
+        if (frame.header.isGlobal && frame.isCommand('read') && !(this._customReadResponse?.(frame, endpoint))) {
             const time = Math.round(((new Date()).getTime() - OneJanuary2000) / 1000);
             const attributes: {[s: string]: KeyValue} = {
                 ...endpoint.clusters,
@@ -244,19 +247,19 @@ class Device extends Entity {
                 },
             };
 
-            if (frame.Cluster.name in attributes) {
+            if (frame.cluster.name in attributes) {
                 const response: KeyValue = {};
-                for (const entry of frame.Payload) {
-                    if (frame.Cluster.hasAttribute(entry.attrId)) {
-                        const name = frame.Cluster.getAttribute(entry.attrId).name;
-                        if (name in attributes[frame.Cluster.name].attributes) {
-                            response[name] = attributes[frame.Cluster.name].attributes[name];
+                for (const entry of frame.payload) {
+                    if (frame.cluster.hasAttribute(entry.attrId)) {
+                        const name = frame.cluster.getAttribute(entry.attrId).name;
+                        if (name in attributes[frame.cluster.name].attributes) {
+                            response[name] = attributes[frame.cluster.name].attributes[name];
                         }
                     }
                 }
 
                 try {
-                    await endpoint.readResponse(frame.Cluster.ID, frame.Header.transactionSequenceNumber, response,
+                    await endpoint.readResponse(frame.cluster.ID, frame.header.transactionSequenceNumber, response,
                         {srcEndpoint: dataPayload.destinationEndpoint});
                 } catch (error) {
                     logger.error(`Read response to ${this.ieeeAddr} failed`, NS);
@@ -266,7 +269,7 @@ class Device extends Entity {
         }
 
         // Handle check-in from sleeping end devices
-        if (frame.isSpecific() && frame.isCluster("genPollCtrl") && frame.isCommand("checkin")) {
+        if (frame.header.isSpecific && frame.isCluster("genPollCtrl") && frame.isCommand("checkin")) {
             try {
                 if (this.hasPendingRequests() || (this._checkinInterval === undefined)) {
                     const payload = {
@@ -274,7 +277,7 @@ class Device extends Entity {
                         fastPollTimeout: 0,
                     };
                     logger.debug(`check-in from ${this.ieeeAddr}: accepting fast-poll`, NS);
-                    await endpoint.command(frame.Cluster.ID, 'checkinRsp', payload, {sendPolicy: 'immediate'});
+                    await endpoint.command(frame.cluster.ID, 'checkinRsp', payload, {sendPolicy: 'immediate'});
 
                     // This is a good time to read the checkin interval if we haven't stored it previously
                     if (this._checkinInterval === undefined) {
@@ -288,14 +291,14 @@ class Device extends Entity {
                     // We *must* end fast-poll when we're done sending things. Otherwise
                     // we cause undue power-drain.
                     logger.debug(`check-in from ${this.ieeeAddr}: stopping fast-poll`, NS);
-                    await endpoint.command(frame.Cluster.ID, 'fastPollStop', {}, {sendPolicy: 'immediate'});
+                    await endpoint.command(frame.cluster.ID, 'fastPollStop', {}, {sendPolicy: 'immediate'});
                 } else {
                     const payload = {
                         startFastPolling: false,
                         fastPollTimeout: 0,
                     };
                     logger.debug(`check-in from ${this.ieeeAddr}: declining fast-poll`, NS);
-                    await endpoint.command(frame.Cluster.ID, 'checkinRsp', payload, {sendPolicy: 'immediate'});
+                    await endpoint.command(frame.cluster.ID, 'checkinRsp', payload, {sendPolicy: 'immediate'});
                 }
             } catch (error) {
                 /* istanbul ignore next */
@@ -304,28 +307,28 @@ class Device extends Entity {
         }
 
         // Send a default response if necessary.
-        const isDefaultResponse = frame.isGlobal() && frame.getCommand().name === 'defaultRsp';
-        const commandHasResponse = frame.getCommand().hasOwnProperty('response');
-        const disableDefaultResponse = frame.Header.frameControl.disableDefaultResponse;
+        const isDefaultResponse = frame.header.isGlobal && frame.command.name === 'defaultRsp';
+        const commandHasResponse = frame.command.hasOwnProperty('response');
+        const disableDefaultResponse = frame.header.frameControl.disableDefaultResponse;
         /* istanbul ignore next */
         const disableTuyaDefaultResponse = endpoint.getDevice().manufacturerName?.startsWith('_TZ') && process.env['DISABLE_TUYA_DEFAULT_RESPONSE'];
         // Sometimes messages are received twice, prevent responding twice
-        const alreadyResponded = this._lastDefaultResponseSequenceNumber === frame.Header.transactionSequenceNumber;
+        const alreadyResponded = this._lastDefaultResponseSequenceNumber === frame.header.transactionSequenceNumber;
         if (this.type !== 'GreenPower' && !dataPayload.wasBroadcast && !disableDefaultResponse && !isDefaultResponse && 
             !commandHasResponse && !this._skipDefaultResponse && !alreadyResponded && !disableTuyaDefaultResponse) {
             try {
-                this._lastDefaultResponseSequenceNumber = frame.Header.transactionSequenceNumber;
+                this._lastDefaultResponseSequenceNumber = frame.header.transactionSequenceNumber;
                 // In the ZCL it is not documented what the direction of the default response should be
                 // In https://github.com/Koenkk/zigbee2mqtt/issues/18096 a commandResponse (SERVER_TO_CLIENT)
                 // is send and the device expects a CLIENT_TO_SERVER back.
                 // Previously SERVER_TO_CLIENT was always used.
                 // Therefore for non-global commands we inverse the direction.                
-                const direction = frame.isGlobal() ? Zcl.Direction.SERVER_TO_CLIENT : (
-                    frame.Header.frameControl.direction === Zcl.Direction.CLIENT_TO_SERVER 
+                const direction = frame.header.isGlobal ? Zcl.Direction.SERVER_TO_CLIENT : (
+                    frame.header.frameControl.direction === Zcl.Direction.CLIENT_TO_SERVER 
                         ? Zcl.Direction.SERVER_TO_CLIENT : Zcl.Direction.CLIENT_TO_SERVER
                 );
                 await endpoint.defaultResponse(
-                    frame.getCommand().ID, 0, frame.Cluster.ID, frame.Header.transactionSequenceNumber, {direction});
+                    frame.command.ID, 0, frame.cluster.ID, frame.header.transactionSequenceNumber, {direction});
             } catch (error) {
                 logger.error(`Default response to ${this.ieeeAddr} failed`, NS);
             }
@@ -351,7 +354,7 @@ class Device extends Entity {
 
         // default: no timeout (messages expire immediately after first send attempt)
         let pendingRequestTimeout = 0;
-        if((endpoints.filter((e): boolean => e.supportsInputCluster('genPollCtrl'))).length > 0) {
+        if((endpoints.filter((e): boolean => e.inputClusters.includes(Clusters.genPollCtrl.ID))).length > 0) {
             // default for devices that support genPollCtrl cluster (RX off when idle): 1 day
             pendingRequestTimeout = 86400000;
             /* istanbul ignore else */
@@ -403,14 +406,20 @@ class Device extends Entity {
         }
     }
 
-    public static byIeeeAddr(ieeeAddr: string, includeDeleted=false): Device {
+    public static find(ieeeOrNwkAddress: string | number, includeDeleted: boolean = false): Device {
+        return typeof ieeeOrNwkAddress === 'string' ? Device.byIeeeAddr(ieeeOrNwkAddress, includeDeleted)
+            : Device.byNetworkAddress(ieeeOrNwkAddress, includeDeleted);
+    }
+
+    public static byIeeeAddr(ieeeAddr: string, includeDeleted: boolean = false): Device {
         Device.loadFromDatabaseIfNecessary();
         const device = Device.devices[ieeeAddr];
         return device?._deleted && !includeDeleted ? undefined : device;
     }
 
-    public static byNetworkAddress(networkAddress: number): Device {
-        return Device.all().find(d => d.networkAddress === networkAddress);
+    public static byNetworkAddress(networkAddress: number, includeDeleted: boolean = false): Device {
+        Device.loadFromDatabaseIfNecessary();
+        return Object.values(Device.devices).find(d => (includeDeleted || !d._deleted) && d.networkAddress === networkAddress);
     }
 
     public static byType(type: DeviceType): Device[] {
@@ -751,8 +760,8 @@ class Device extends Entity {
             };
 
             const frame = Zcl.ZclFrame.create(
-                Zcl.FrameType.SPECIFIC, Zcl.Direction.SERVER_TO_CLIENT, true,
-                null, ZclTransactionSequenceNumber.next(), 'pairing', 33, payload
+                Zcl.FrameType.SPECIFIC, Zcl.Direction.SERVER_TO_CLIENT, true, null,
+                ZclTransactionSequenceNumber.next(), 'pairing', 33, payload, this.customClusters,
             );
 
             await Entity.adapter.sendZclFrameToAll(242, frame, 242);
@@ -799,6 +808,25 @@ class Device extends Entity {
         // possible.
         const endpoint = this.endpoints.find((ep) => ep.inputClusters.includes(0)) ?? this.endpoints[0];
         await endpoint.read('genBasic', ['zclVersion'], {disableRecovery});
+    }
+
+    public addCustomCluster(name: string, cluster: ClusterDefinition): void {
+        assert(!([Clusters.touchlink.ID, Clusters.greenPower.ID].includes(cluster.ID)),
+            'Overriding of greenPower or touchlink cluster is not supported');
+        if (isClusterName(name)) {
+            const existingCluster = Clusters[name];
+
+            // Extend existing cluster
+            assert(existingCluster.ID === cluster.ID, `Custom cluster ID (${cluster.ID}) should match existing cluster ID (${existingCluster.ID})`);
+            cluster = {
+                ID: cluster.ID,
+                manufacturerCode: cluster.manufacturerCode,
+                attributes: {...existingCluster.attributes, ...cluster.attributes},
+                commands: {...existingCluster.commands, ...cluster.commands},
+                commandsResponse: {...existingCluster.commandsResponse, ...cluster.commandsResponse},
+            };
+        }
+        this._customClusters[name] = cluster;
     }
 }
 
