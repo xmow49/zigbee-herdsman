@@ -5836,6 +5836,7 @@ const Clusters: Readonly<Record<ClusterName, Readonly<ClusterDefinition>>> = {
 
             currentIndex: { ID: 0x0025, type: DataType.uint8 },
 
+            currentTarif: { ID: 0x0039, type: DataType.charStr },
             calendarSupplierDay: { ID: 0x0026, type: DataType.uint16 },
             nextSupplierCalendarDay: { ID: 0x0027, type: DataType.uint16 },
             calendarDay: { ID: 0x0028, type: DataType.charStr },
